@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    #player {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 80%;
+      height: 90px;
+      padding: 10px;
+      background: rgba(100, 100, 100, 0.3);
+    }
+
+    .count {
+      position: absolute;
+      bottom: 40px;
+      left: 50px;
+      z-index: 1;
+    }
+
+    .num {
+      font-size: 26px;
+      color: #B44322;
+    }
+
+    .txt {
+      font-size: 16px;
+      color: #775032;
+    }
+
+    .demo-title {
+      position: absolute;
+      top: 25px;
+      left: 25px;
+      z-index: 1;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0;
+      color: rgb(180, 180, 190);
+    }
+
+    h3 {
+      font-size: 12px;
+      font-weight: normal;
+      margin-top: 5px;
+      color: rgb(150, 150, 150);
+    }
+
+    .custom-button {
+      position: absolute;
+      top: 50px;
+      left: 25px;
+      padding: 5px 10px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #000000;
+      background-color: #f3c883;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+
+    .custom-button:hover {
+      background-color: #c56f12;
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="demo-title">
+    <h1>WHU Trajectory tracking</h1>
+  </div>
+  <div id="map"></div>
+  <canvas id="player"></canvas>
+  <div class="count">
+    <!-- <div class="num"> 1000</div> -->
+    <!-- <div class="txt">Number</div> -->
+  </div>
+  <script
+    src="https://webapi.amap.com/maps?v=2.0&key=fa705bc6324f17bd9d881c9a8364cf19&plugin=AMap.Scale,AMap.ToolBar"></script>
+  <script src="https://webapi.amap.com/loca?v=2.0.0&key=fa705bc6324f17bd9d881c9a8364cf19"></script>
+  <!-- <script src="https://a.amap.com/Loca/static/loca-v2/demos/mock_data/confucius_data.js"></script> -->
+  <script src="./data.js"></script>
+  <script src="https://a.amap.com/Loca/static/loca-v2/demos/libs/index.aio.min.js"></script>
+  <script>
+    var map = new AMap.Map('map', {
+      zoom: 18,
+      showLabel: false,
+      viewMode: '3D',
+      center: [114.355684, 30.527899],
+      mapStyle: 'amap://styles/normal',
+    });
+
+
+    var loca = new Loca.Container({
+      map,
+    });
+
+    var pl = new Loca.PointLayer({
+      zIndex: 10,
+      opacity: 1,
+    });
+
+
+    var minuteRange = [0, 665];
+    function updateSource(curTime) {
+      let features = data.features.filter(f => {
+        let tt = f.properties.relevant_time;
+        return tt <= curTime;
+      })
+      let n = features.length;
+      let dom = document.getElementsByClassName('num')[0];
+      // dom.innerText = n;
+      var geo = new Loca.GeoJSONSource({
+        data: {
+          "type": "FeatureCollection",
+          "features": features,
+        },
+      });
+      pl.setSource(geo);
+    }
+
+    updateSource(minuteRange[0])
+
+    var colors = [
+      'rgba(255, 195, 136,0.8)',
+      'rgba(255, 195, 136,0.8)',
+      'rgba(255, 178, 105,0.8)',
+      'rgba(255, 161, 94,0.8)',
+      'rgba(253, 143, 91,0.8)',
+      'rgba(249, 125, 90,0.8)',
+      'rgba(242, 108, 88,0.8)',
+      'rgba(233, 91, 86,0.8)',
+      'rgba(224, 75, 81,0.8)',
+      'rgba(213, 58, 75,0.8)',
+      'rgba(201, 44, 66,0.8)',
+      'rgba(187, 29, 54,0.8)',
+      'rgba(172, 15, 41,0.8)',
+      'rgba(156, 4, 24,0.8)',
+    ];
+
+
+
+    var style = {
+      radius: 5,
+      unit: 'px',
+      color: (index, feature) => {
+        let speed = feature.properties.speed;
+        let ind = Math.round(speed / 1.5);
+        let color = colors[ind];
+        return color;
+      },
+      borderWidth: 0,
+    }
+    pl.setStyle(style);
+    loca.add(pl);
+
+    var dat = new Loca.Dat();
+    dat.addLayer(pl, '点图层');
+
+
+    addPlayBar();
+
+    function addPlayBar() {
+      var canvasDom = document.getElementById('player');
+
+      var _style = getComputedStyle(canvasDom);
+      let height = _style.getPropertyValue('height');
+      let width = _style.getPropertyValue('width');
+      canvasDom.height = parseInt(height.slice(0, -2));
+      canvasDom.width = parseInt(width.slice(0, -2));
+
+      var dots = [];
+      for (let i = 0; i < 665; i++) {
+        let minute = i;
+        dots.push({
+          progress: i / 360,
+          text: `${minute}分钟`,
+        });
+      }
+
+      this.player = new PlayBar({
+        canvas: canvasDom,
+
+        option: {
+          progressTextCallback: (progress) => {
+            let text = '';
+            for (let i = 0; i < dots.length; i++) {
+              let dot = dots[i];
+              if (dot.progress === progress) {
+                text = dot.text;
+                break;
+              } else if (dot.progress > progress) {
+                text = dot.text;
+                break;
+              }
+            }
+            return text;
+          },
+          background: "rgba(0,0,0,0)",
+          dot: {
+            color: "#444D64",
+            radius: 6,
+            borderWidth: 4,
+            hoverColor: "#CCC",
+          },
+          progressDot: {
+            color: "#C5582D",
+            radius: 10,
+          },
+          progressColor: "#C5582D",
+          button: {
+            radius: 20,
+            color: "#B44322",
+            pause: true,
+          },
+          gap: 0,
+          step: 1 / 20,
+          // 播放总时长
+          playTimeLength: 5,
+
+          padding: 20,
+          lineColor: "#55617F",
+          lineWidth: 3,
+          fontColor: "#727272",
+          fontSize: 12,
+        },
+        data: {
+          dots: dots,
+          progress: 0,
+        }
+      });
+
+      player.play();
+      player.on('play', (e) => {
+        player.play();
+      });
+      player.on('pause', (e) => {
+        this.player.pause();
+      });
+      player.on('click', (e) => {
+        for (let i = 1; i < dots.length; i++) {
+          let cur = dots[i];
+          let pre = dots[i - 1]
+          if (cur.progress >= e.progress && pre.progress < e.progress) {
+            player.setProgress(cur.progress)
+            updateData(cur.progress)
+            break;
+          }
+        }
+      })
+
+
+      //设置重新播放
+      player.on('progress', (e) => {
+        updateData(e.progress);
+        // console.log('e.progress', e.progress);
+        if (e.progress >= 1) {
+          setTimeout(() => {
+            player.setProgress(0)
+            player.play();
+          }, 200)
+        }
+      })
+
+      function updateData(progress) {
+        let prog = progress >= 1 ? 1 : progress;
+        let len = minuteRange[minuteRange.length - 1] - minuteRange[0];
+        let ind = len * prog + minuteRange[0]
+        updateSource(ind)
+      }
+    }
+  </script>
+
+
+</body>
+
+</html>

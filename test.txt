@@ -1,0 +1,15 @@
+# 定义将“度度分分.分分分”格式转换为度数的函数
+def dms_to_deg_lontitude(dms_str):
+    if len(dms_str) < 8:
+        return None  # 如果长度不足，返回None
+    degrees = int(dms_str[0:3])
+    minutes = float(dms_str[3:])  # 将剩余部分作为分钟处理
+    return degrees + minutes / 60
+
+
+def dms_to_deg_latitude(dms_str):
+    if len(dms_str) < 8:
+        return None  # 如果长度不足，返回None
+    degrees = int(dms_str[0:2])
+    minutes = float(dms_str[2:])  # 将剩余部分作为分钟处理
+    return degrees + minutes / 60
